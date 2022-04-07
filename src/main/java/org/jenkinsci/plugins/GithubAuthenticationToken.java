@@ -182,7 +182,20 @@ public class GithubAuthenticationToken extends AbstractAuthenticationToken {
         }
     }
 
+    /**
+     * Clear caches by username for use in new logins
+     */
+    public static void clearCacheForUser(String userName) {
+        userOrganizationCache.invalidate(userName);
+        repositoriesByUserCache.invalidate(userName);
+        usersByIdCache.invalidate(userName);
+        userTeamsCache.invalidate(userName);
+    }
     public GithubAuthenticationToken(final String accessToken, final String githubServer) throws IOException {
+        this(accessToken, githubServer, false);
+    }
+
+    public GithubAuthenticationToken(final String accessToken, final String githubServer, final boolean clearUserCache) throws IOException {
         super(new GrantedAuthority[] {});
 
         this.accessToken = accessToken;
@@ -195,6 +208,12 @@ public class GithubAuthenticationToken extends AbstractAuthenticationToken {
         setAuthenticated(true);
 
         this.userName = this.me.getLogin();
+
+        if (clearUserCache) {
+            // Clear the cache when requested. In particular, for new logins as groups and teams
+            // may have changed due to SSO [JENKINS-60200].
+            clearCacheForUser(this.userName);
+        }
 
         authorities.add(SecurityRealm.AUTHENTICATED_AUTHORITY);
         Jenkins jenkins = Jenkins.getInstance();
